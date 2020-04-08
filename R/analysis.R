@@ -29,4 +29,74 @@ df4$...2 <- df4$Region_Province
 # first column contains Thai alphabet, went with English spelling
 df5 <- df4[,-(1)]
 
+# create new column Region
+# selecting consecutive rows within a column to add a character label
+df5[3:6,12] <- "Greater Bangkok"
+df5[8:29,12] <- "Central Region"
+df5[31:47,12] <- "Northern Region"
+df5[49:68,12] <- "Northeastern"
+df5[70:83,12] <- "Southern"
+
+df5[1:1,12] <- "Country Level" 
+df5[2:2,12] <- "Greater Bangkok Category"
+df5[7:7,12] <- "Central Region Category"
+df5[30:30,12] <- "Northern Region Category"
+df5[48:48,12] <- "Northeastern Category"
+df5[69:69,12] <- "Southern Category"
+
+##### Tidy Data
+
+# gather, key, value
+df6 <- df5 %>% gather(`1998`, `2000`, `2002`, `2004`, `2006`, `2007`, `2009`, `2011`, `2013`, `2015`, key = "year", value = "Avg_Monthly_Household_Income")
+
+### Basic Plots
+# Bar
+
+ggplot(data = df6, mapping = aes(x = Region, y = Avg_Monthly_Household_Income)) 
++ geom_bar(stat = "identity")
+
+# NOTE: distinguishing “Greater Bangkok Category” from “Greater Bangkok” is NOT helpful 
+df5a <- df5
+df5a[2:2,12] <- "Greater Bangkok"
+df5a[7:7,12] <- "Central Region"
+df5a[30:30,12] <- "Northern Region"
+df5a[48:48,12] <- "Northeastern"
+df5a[69:69,12] <- "Southern"
+
+# delete 'whole kingdom'
+df5a <- df5a[-1,]
+df6a <- df5a %>% gather(`1998`, `2000`, `2002`, `2004`, `2006`, `2007`, `2009`, `2011`, `2013`, `2015`, key = "year", value = "Avg_Income")
+
+bar1 <- ggplot(data = df6a, mapping = aes(x = Region, y = Avg_Income)) 
++ geom_bar(stat = "identity") 
++ labs(x = "Region", y = "Average Household Monthly Income", title = "Average Household Monthly Income, 1998 - 2015")
+
+# turn off scienfic notation
+options(scipen = 999)
+
+# group_by province, then do another bar
+# re-order works after group_by
+province <- df6a %>% group_by(Region_Province) %>% summarize(sum_avg_income = sum(Avg_Income), mean = mean(Avg_Income), sd = sd(Avg_Income))
+
+# Re-order only works after applying group_by, then summarize and saved in a new data frame
+province_bar_reorder <- ggplot(data = province, mapping = aes(x = reorder(Region_Province, sum_avg_income), y = sum_avg_income)) 
++ geom_bar(stat = "identity") 
++ labs(x = "Province", y = "Average Household Monthly Income", title = "Sum Average Household Monthly Income by Province, 1998 - 2015")
+# adjust x-axis tick to 90 degree
++ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Plot Region (only)
+# re-order by sum_avg_income (greater bangkok NOT the largest)
+ggplot(data = region, mapping = aes(x = reorder(Region, sum_avg_income), y = sum_avg_income)) 
++ geom_bar(stat = "identity") 
++ labs(x = "Region", y = "Sum Average Household Monthly Income", title = "Sum Average Household Monthly Income by Region, 1998 - 2015")
+
+# re-order by mean (greater bangkok IS the largest)
+ggplot(data = region, mapping = aes(x = reorder(Region, mean), y = mean)) 
++ geom_bar(stat = "identity") 
++ labs(x = "Region", y = "Mean Household Monthly Income", title = "Mean Household Monthly Income by Region, 1998 - 2015")
+
+
+
+
 
