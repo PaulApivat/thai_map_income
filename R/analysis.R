@@ -96,6 +96,32 @@ ggplot(data = region, mapping = aes(x = reorder(Region, mean), y = mean))
 + geom_bar(stat = "identity") 
 + labs(x = "Region", y = "Mean Household Monthly Income", title = "Mean Household Monthly Income by Region, 1998 - 2015")
 
+###### ------- MAP ---------#######
+
+## Option 1 (Playing around with map - this option does not ultimately work)
+## NOTE: maps package doesn’t include Thailand’s sub-region
+
+### Complication ####
+# Note: Trying to visualize Thailand map in GGPLOT, using geom_polygon requires, long, lat, group,
+# If i wanted to visualize the average income of each region, I would need “subregion” data
+
+library(devtools)
+library(maps)
+library(mapdata)
+library(ggmap)
+library(broom)  	# get tidy() function
+
+# get data frame from map_data() from “broom” package
+map_data_thai <- map_data("worldHires", region = c("thailand"))
+# completely filled in map (solid black, not outline)
+map_thai2 <- ggplot() + geom_polygon(data = map_data_thai, aes(x=long, y=lat, group=group)) + coord_fixed(1.0)
+fun_map <- ggplot() + geom_polygon(data = map_data_thai, aes(x=long, y =lat, group=group), fill = "light blue", color = "green") + coord_fixed(1.0)
+
+fun_map + geom_point(data = dots, aes(x=long, y=lat), color = "black", size = 5) 
+        + geom_point(data = dots, aes(x=long, y=lat), color = "yellow", size = 4)
+
+#### Option 2: Getting Maps to Work
+
 
 
 
