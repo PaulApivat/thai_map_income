@@ -1,0 +1,1 @@
+# thai_map_income
