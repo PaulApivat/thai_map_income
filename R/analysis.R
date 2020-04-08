@@ -1,5 +1,11 @@
 # R version 3.6.2 (2019-12-12) -- "Dark and Stormy Night"
 
+# main source(s):
+# Tutorial 1. https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+# Tutorial 2. (see this for labels) http://bl.ocks.org/prabhasp/raw/5030005/
+# Maps Data 3: https://gadm.org/download_country_v3.html
+# Income Data 4: https://data.go.th/DatasetDetail.aspx?id=7049410f-5bb8-4c75-9e94-112ca18b63e2
+
 # load previously saved data
 load(file = "thai_income.RData")
 
@@ -120,9 +126,156 @@ fun_map <- ggplot() + geom_polygon(data = map_data_thai, aes(x=long, y =lat, gro
 fun_map + geom_point(data = dots, aes(x=long, y=lat), color = "black", size = 5) 
         + geom_point(data = dots, aes(x=long, y=lat), color = "yellow", size = 4)
 
-#### Option 2: Getting Maps to Work
+#### ----- Option 2: Getting Maps to Work ----- ######
+
+## could NOT get this data from the maps / mapdata package; 
+## rather, had to go to GADM.org and download Thailand R (sf) level1 (and level2); 
+## https://gadm.org/download_country_v3.html
+## then use the broom package function tidy() to temporarily convert it to a dataframe in View() 
+## to see that it had the following columns (long, lat, order, hole, piece, group, id); 
+
+## tutorial: source: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+
+# invalid graphics state error
+dev.off()
+
+# Confirm: the “id” in tidy(thai1) is “province” (n = 77)
+# this is important to map
+
+# Views to figure this out:
+# - thai1 (not helpful)
+# - tidy(thai1) 	function from broom package, identify “id”
+# - thai1_dif		convert to data frame (see GID_1, NAME_1)
+# - df5a		Province = ID (n = 77)
+
+# Next steps:
+# - add “id” column to thai1_df
+# - fill that “id” column 1-to-77
+# - also add “id” column to df5a, (erase: Greater Bangkok, Central Region, Northern Region, Northeastern Region, and Southern Region)
+# - use that column to join with “id” column in tidy(thai1)
+
+### data frames to use
+# - thai1
+# - tidy(thai1)   #broom package
+# - View(thai1_tidy %>% group_by(id) %>% tally(sort = TRUE))    #confirm 77 province
+# - thai1_df      #match id to province (column 0 is the id)
+# - df5a 	
+# - df6a
+
+# step 0: 
+df5b <- df5a
+
+# step 1: delete “Greater Bangkok”, “Central Region”, “Northern Region”, “Northeastern Region”, “Southern Region”
+df5b <- df5b[-1,]		# formerly “Greater Bangkok”
+df5b <- df5b[-5,]		# formerly “Central Region”
+df5b <- df5b[-27,]		# formerly “Northern Region”
+df5b <- df5b[-44,]		# formerly “Northeastern Region”
+df5b <- df5b[-64,]		# formerly “Southern Region”
+
+# step 2: create new column (first column) next to “Region_Province” in df5b to put 'id'
+# NOTE: major assumption is that column 0 in thai1_df is in fact the “id” in thai1_tidy
+
+# step2a: manually enter id 1-77 for df5b
+
+library(tibble) # for add_column() function
+
+df5b <- add_column(df5b, id = c("23", "53", "30", "31", "41", "12", "15", "60", "67", "57", 
+"4", "49", "77", "69", "56", "44", "19", "51", "48", "8", "63", "20", "54", "55", "38", "46", 
+"2", "13", "11", "73", "42", "26", "36", "3", "16", "24", "72", "7", "66", "62", "40", "39", 
+"37", "22", "45", "65", "59", "70", "75", "76", "1", "34", "28", "9", "71", "14", "29", "17", 
+"50", "6", "52", "21", "18", "25", "10", "33", "43", "64", "47", "5", "61", "58", "68", "35", 
+"32", "74", "27"), .before = "Region_Province")
+
+# step 3: thai1_tidy <- tidy(thai) # already created
+# note: “id” is a character, not a numeric
+
+# step 4: join df5b and thai1_tidy by id
+thai1_tidy_join <- thai1_tidy %>%
+    inner_join(df5b, by = "id")
+
+# step 5: plot fill = 1998 numbers (lame! cannot see the difference, must transform numbers)
+ggplot(data = thai1_tidy_join) + geom_polygon(aes(x = long, y = lat, fill = 1998, group = group), color = "white") + coord_fixed(1.0) + guides(fill = FALSE)
+# nice looking all Region_Province has different color (note: took out guides(fill=FALSE) so menu displayed all 77 provinces
+ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = Region_Province, group = group), color = "white") 
++ coord_fixed(1.0)
+
+# Goal: display Avg Income PER YEAR basis only (not aggregate)
+avg_income_1998 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`1998`, group = group), color = "white") 
++ coord_fixed(1.0) 
++ scale_fill_continuous(type = "viridis")
+
+avg_income_2015 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`2015`, group = group), color = "white") 
++ coord_fixed(1.0) 
++ scale_fill_continuous(type = "viridis") 
++ labs(fill = "Average Monthly Income, 2015")
+
+### 2007 income: Divergent 
+#### scale_fill_gradient2, especially for divergent continuous fill
+
+avg_income_2007 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`2007`, group = group), color = "white") 
++ coord_fixed(1.0) 
++ scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 20000, space = "Lab", na.value = "grey50", guide = "colourbar", aesthetics = "fill") 
++ labs(fill = "Average Monthly Income, 2007")
+
+### Find median point to use as “white” mid-point of color divergent
+summary(df5b)   	# use median as midpoint (mid = “white”)
+
+## district names on the map
+## make a dataset that creates centroids per district, map a layer of text 
+# source: http://bl.ocks.org/prabhasp/raw/5030005/
+# NOTE: since “deploy” is not available for R version 3.6.2, you can achieve the same thing using pipe functions in tidyverse
+
+# text_centroid
+thai1_tidy_join %>%
+    group_by(Region_Province) %>%
+    summarize(clat = mean(lat), clong = mean(long)) -> text_centroid
 
 
+###--------- Final Plots (geom_text, size outside of aes())----------###
 
+# average monthly household income (amhi) 1998
+amhi_1998 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`1998`, group = group), color = "black") 
++ coord_fixed(1.0) 
++ scale_fill_gradient2(low = "#ca0020", mid = "white", high = "#0571b0", midpoint = 10000, space = "Lab", na.value = "grey50", guide = "colourbar", aesthetics = "fill") 
++ labs(fill = "Average Monthly Household Income, 1998") 
++ theme_classic() 
++ geom_text(data = text_centroid, aes(x = clong, y = clat, label = Region_Province), size = 2)
 
+# average monthly household income (amhi) 2007
+amhi_2007 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`2007`, group = group), color = "black") 
++ coord_fixed(1.0) 
++ scale_fill_gradient2(low = "#ca0020", mid = "white", high = "#0571b0", midpoint = 15000, space = "Lab", na.value = "grey50", guide = "colourbar", aesthetics = "fill") 
++ labs(fill = "Average Monthly Household Income, 2007") 
++ theme_classic() 
++ geom_text(data = text_centroid, aes(x = clong, y = clat, label = Region_Province), size = 2)
+
+# average monthly household income (amhi) 2015
+amhi_2015 <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$`2015`, group = group), color = "black") 
++ coord_fixed(1.0) 
++ scale_fill_gradient2(low = "#ca0020", mid = "white", high = "#0571b0", midpoint = 22000, space = "Lab", na.value = "grey50", guide = "colourbar", aesthetics = "fill") 
++ labs(fill = "Average Monthly Household Income, 2015") 
++ theme_classic() 
++ geom_text(data = text_centroid, aes(x = clong, y = clat, label = Region_Province), size = 2)
+
+##### Income Change over the years
+
+# calculate change in income from 1998 - 2015
+thai1_tidy_join <- thai1_tidy_join %>% 
+mutate(income_change = thai1_tidy_join$`2015` - thai1_tidy_join$`1998`)
+
+# ploting change in household income
+amhi_change <- ggplot(data = thai1_tidy_join) 
++ geom_polygon(aes(x = long, y = lat, fill = thai1_tidy_join$income_change, group = group), color = "white") 
++ coord_fixed(1.0) 
++ scale_fill_continuous(type = "viridis") 
++ labs(fill = "Change in Avg Monthly Income, 1998 - 2015") 
++ theme_classic() 
++ geom_text(data = text_centroid, aes(x = clong, y = clat, label = Region_Province), size = 2)
 
